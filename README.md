@@ -88,7 +88,7 @@ Copy code
 
 - Python
 - Streamlit
-- OpenAI GPT (for AI text generation)
+- Google-Gemini-Flsh (for AI text generation)
 - YouTube API (for transcript fetching)
 - Natural Language Processing (NLP) libraries
 
