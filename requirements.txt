@@ -1,7 +1,7 @@
-tenacity==9.0.0
-google-api-core==2.21.0
-google-generativeai==0.8.3
-youtube-transcript-api==0.6.2
+tenacity
+google-api-core
+google-generativeai
+youtube-transcript-api
 streamlit
 time
 re
