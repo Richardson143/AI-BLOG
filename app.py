@@ -119,11 +119,13 @@ cache_lock = threading.Lock()
 
 # Optimized transcript fetching with caching
 @st.cache_data
+@retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=4, max=10))
 def get_transcript(youtube_video_url, max_retries=3, delay=2):
     video_id = extract_video_id(youtube_video_url)
     if not video_id:
         raise ValueError("Invalid YouTube URL")
     
+    # Check cache first
     if video_id in cache:
         return cache[video_id]
         
@@ -131,13 +133,18 @@ def get_transcript(youtube_video_url, max_retries=3, delay=2):
         try:
             transcript = YouTubeTranscriptApi.get_transcript(video_id)
             text = " ".join([entry["text"] for entry in transcript])
+            
+            # Cache the result
             with cache_lock:
                 cache[video_id] = text
+            
             return text
         except Exception as e:
             if attempt == max_retries - 1:
                 raise e
-            time.sleep(delay)
+            time.sleep(delay * (attempt + 1))  # Exponential backoff
+
+    raise Exception("Failed to retrieve transcript after multiple attempts")
 
 # Function to chunk long text
 def chunk_text(text, chunk_size=4000, overlap=500):
