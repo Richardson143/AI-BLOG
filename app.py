@@ -13,8 +13,8 @@ from google.api_core.exceptions import ResourceExhausted
 load_dotenv()
 
 # Configure the Google Generative AI client with the API key from environment variables
-# genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
-genai.configure(api_key='AIzaSyBMb20Nck_BV_4297NnxlEju73UL5vsvYY')
+genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
+
 
 @retry(
     stop=stop_after_attempt(5),
