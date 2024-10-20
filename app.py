@@ -199,22 +199,6 @@ def generate_blog_post(input_text, tone, keywords, length):
         input_text='\n'.join(all_content)
     )
 
-    # final_prompt = f"""
-    # Create a single, cohesive blog post based on the following information:
-    # {' '.join(all_content)}
-
-    # Guidelines:
-    # 1. Create a unified narrative covering all main points.
-    # 2. Use a {tone} tone throughout.
-    # 3. Incorporate these keywords naturally: {', '.join(keywords)}
-    # 4. Aim for approximately {word_count} words.
-    # 5. Include an introduction, well-structured body, and conclusion.
-    # 6. Use subheadings to organize content.
-    # 7. Ensure smooth transitions between topics.
-
-    # Write the complete blog post now, maintaining a cohesive structure throughout.
-    # """
-
     try:
         final_response = generate_content_with_retry(model, final_prompt)
         return final_response.text
