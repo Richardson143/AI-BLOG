@@ -225,7 +225,7 @@ def generate_blog_post(input_text, tone, keywords, length):
 
 # Streamlit UI with progress tracking
 def main():
-    st.set_page_config(page_title="AI Blog Post Generator", layout="wide")
+    st.set_page_config(page_title="BlogBrain Genius AI", layout="wide")
     
     # Initialize session state
     if 'blog_post' not in st.session_state:
@@ -233,7 +233,7 @@ def main():
     if 'processing' not in st.session_state:
         st.session_state.processing = False
     
-    st.title("✍️ AI Blog Post Generator")
+    st.title("✍️ BlogBrain Genius AI: Video to Blog Alchemist")
     
     # Input method selection with proper state management
     input_method = st.radio("Choose input method:", ("YouTube Video", "Custom Text"))
@@ -252,6 +252,9 @@ def main():
     
     # Sidebar options
     with st.sidebar:
+        st.markdown("<h1 style='text-align: center; color: #4A90E2;'>🧠 BlogBrain Genius AI</h1>", unsafe_allow_html=True)
+        st.markdown("<p style='text-align: center;'>Transform Content into Engaging Blog Posts</p>", unsafe_allow_html=True)
+        st.markdown("---")
         tone = st.selectbox("Select tone:", TONE_OPTIONS)
         keywords = st.text_input("Enter keywords (comma-separated):")
         length = st.selectbox("Select length:", list(LENGTH_OPTIONS.keys()))
