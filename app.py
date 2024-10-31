@@ -6,18 +6,17 @@ import os
 from youtube_transcript_api import YouTubeTranscriptApi
 import time
 import re
-from concurrent.futures import ThreadPoolExecutor, as_completed
+import tiktoken
+import time
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 from google.api_core.exceptions import ResourceExhausted
 # Load environment variables from a .env file
 load_dotenv()
 
-# Configure the Google Generative AI client with the API key from environment variables
-genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
-
+genai.configure(api_key='api-key-here')
 
 @retry(
-    stop=stop_after_attempt(5),
+    stop=stop_after_attempt(3),
     wait=wait_exponential(multiplier=1, min=4, max=60),
     retry=retry_if_exception_type(ResourceExhausted),
     reraise=True
@@ -32,59 +31,94 @@ def generate_content_with_retry(model, prompt):
 
 # Define the base prompt template
 base_prompt_template = '''
-You are an AI assistant specializing in transforming long-form content, such as YouTube video transcripts or user-provided text, into a single, cohesive, and engaging blog post. Your task is to create a comprehensive blog post that captures the essence of the entire input while enriching it with additional information, insights, and a conversational touch.
+You are an expert content writer and storyteller with years of experience in creating viral blog posts. Your task is to transform the input content into a captivating, human-like blog post that feels personally written and connects deeply with readers.
 
-Guidelines for the Blog Post:
+Guidelines for Creating an Authentic, Engaging Blog Post:
 
-1. Structure:
-   - Title: Create an engaging title for the blog post.
-   - Meta Description: Write a compelling 150-160 character meta description for SEO.
-   - Introduction: Briefly introduce the topic and hook the reader.
-   - Main Body: Divide into relevant sections with subheadings. Ensure smooth transitions between sections.
-   - Conclusion: Summarize key points and provide a call-to-action.
+1. Voice & Personality:
+   - Write as if you're having a coffee chat with the reader
+   - Include personal observations and insights
+   - Use "I", "we", and "you" to create connection
+   - Add thoughtful rhetorical questions to engage readers
+   - Include relevant personal anecdotes or examples
 
-2. Content Enhancement:
-   - Synthesize information from all parts of the input to create a coherent narrative.
-   - Provide additional explanations, examples, or related information to enrich the content.
-   - Include interesting anecdotes or expert opinions to add depth and credibility.
+2. Enhanced Structure:
+   - Hook: Start with a powerful personal story or provocative question
+   - Introduction: Create an emotional connection with the reader's pain points
+   - Story Arc: Maintain narrative tension throughout
+   - Strategic Cliffhangers: Keep readers engaged between sections
+   - Memorable Conclusion: End with inspiration or call-to-action
 
-3. Engagement:
-   - Use a {tone} tone consistently throughout the post.
-   - Include relevant descriptions of potential visuals or infographics.
-   - Structure the post for easy readability using subheadings, bullet points, and short paragraphs.
+3. Human Touch Elements:
+   - Add occasional conversational asides (e.g., "Now, here's the interesting part...")
+   - Include relatable real-world examples
+   - Share practical tips from personal experience
+   - Address potential reader objections naturally
+   - Use humor and wit where appropriate
 
-4. SEO Optimization:
-   - Naturally incorporate these keywords: {keywords}
-   - Use variations and related terms to avoid keyword stuffing.
-   - Implement proper heading structure (H1 for title, H2 for main sections, H3 for subsections).
+4. Engagement Boosters:
+   - Create "Aha!" moments
+   - Include surprising statistics or counterintuitive insights
+   - Add social proof through expert quotes or case studies
+   - Use power words and emotional triggers
+   - Create shareable, quotable moments
 
-5. Length and Style:
-   - Aim for a total of approximately {word_count} words for the entire blog post.
-   - Use varied sentence structures and paragraph lengths for better flow.
-   - Incorporate rhetorical devices like analogies, metaphors, or storytelling elements where appropriate.
+5. Modern Content Optimization:
+   - Write scannable content with varied paragraph lengths
+   - Use bucket brigades to maintain flow
+   - Include tweet-worthy quotes
+   - Add content upgrades or bonus tips
+   - Suggest related resources
 
-6. Cohesion:
-   - Ensure that all parts of the blog post connect logically and flow smoothly.
-   - Use transitional phrases to link different sections and ideas.
-   - Maintain consistent themes and arguments throughout the post.
+6. Visual Flow:
+   - Use descriptive scene-setting
+   - Include sensory details
+   - Suggest relevant image placements
+   - Break up text with varied formatting
+   - Create visual hierarchy with subheadings
 
-7. Formatting:
-   - Use appropriate HTML tags for headings (h1, h2, h3), lists (ul, ol), and emphasis (strong, em).
-   - Suggest places to break up text with [IMAGE PLACEHOLDER] or [VIDEO EMBED PLACEHOLDER] tags.
-   - Include a table of contents for longer articles.
+7. Viral Elements:
+   - Include controversial or debate-worthy points
+   - Add "share-worthy" statistics or facts
+   - Create memorable metaphors
+   - Include practical takeaways
+   - End with discussion-provoking questions
 
-8. Additional Elements:
-   - Create a "Key Takeaways" or "TL;DR" section for quick reference.
-   - Suggest pull quotes or highlight boxes for important information.
-   - If applicable, include a section addressing common questions or misconceptions about the topic.
+8. Reader Experience:
+   - Address common objections preemptively
+   - Include FAQs in conversational style
+   - Add expert tips and insider secrets
+   - Provide actionable next steps
+   - Create FOMO (Fear of Missing Out) elements
 
-Important: Create only ONE cohesive blog post that covers all the main points from the entire input. Ensure that the final output is a single, well-structured article, not multiple separate posts.
+9. Content Enhancement:
+   - Add relevant industry trends
+   - Include success stories or case studies
+   - Provide practical implementation steps
+   - Share common mistakes to avoid
+   - Offer exclusive insights
 
-Please create a single, detailed, and engaging blog post based on the following input:
+10. SEO & Readability:
+    - Natural keyword integration: {keywords}
+    - Use power words and emotional triggers
+    - Create skimmable sections
+    - Include meta description and title suggestions
+    - Optimize for featured snippets
+
+Tone Guidelines:
+- Maintain a {tone} voice throughout
+- Balance expertise with accessibility
+- Use conversational language
+- Show personality and authenticity
+- Be empathetic and understanding
+
+Length: Aim for {word_count} words while maintaining quality and engagement
+
+Please transform the following input into a captivating, human-like blog post that readers won't be able to resist sharing:
 
 {input_text}
 
-Remember to maintain a {tone} tone throughout the post and aim for a total of {word_count} words for the entire article.
+Remember: Write as if you're the world's most engaging storyteller sharing invaluable insights with a friend. Make every word count and every paragraph impossible to skip.
 '''
 
 # Expanded tone options
@@ -119,93 +153,134 @@ cache_lock = threading.Lock()
 
 # Optimized transcript fetching with caching
 @st.cache_data
-@retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=4, max=10))
-def get_transcript(youtube_video_url, max_retries=3, delay=2):
-    video_id = extract_video_id(youtube_video_url)
-    if not video_id:
-        raise ValueError("Invalid YouTube URL")
-    
-    # Check cache first
-    if video_id in cache:
-        return cache[video_id]
-        
-    for attempt in range(max_retries):
-        try:
-            transcript = YouTubeTranscriptApi.get_transcript(video_id)
-            text = " ".join([entry["text"] for entry in transcript])
-            
-            # Cache the result
-            with cache_lock:
-                cache[video_id] = text
-            
-            return text
-        except Exception as e:
-            if attempt == max_retries - 1:
-                raise e
-            time.sleep(delay * (attempt + 1))  # Exponential backoff
-
-    raise Exception("Failed to retrieve transcript after multiple attempts")
-
-# Function to chunk long text
-def chunk_text(text, chunk_size=4000, overlap=500):
-    # Only chunk if text is longer than chunk_size
-    if len(text) <= chunk_size:
-        return [text]
-        
-    chunks = []
-    start = 0
-    while start < len(text):
-        end = start + chunk_size
-        
-        # Find the nearest sentence end
-        if end < len(text):
-            end = text.rfind('.', start, end) + 1
-            if end <= start:
-                end = start + chunk_size
-                
-        chunk = text[start:end].strip()
-        if chunk:
-            chunks.append(chunk)
-        start = end - overlap
-        
-    return chunks
-
-# Function to generate blog post using Gemini AI model with retries
-def generate_blog_post(input_text, tone, keywords, length):
-    word_count = LENGTH_OPTIONS[length]
-    chunks = chunk_text(input_text)
-    model = genai.GenerativeModel("gemini-1.5-flash")
-
-    all_content = []
-    for i, chunk in enumerate(chunks):
-        chunk_prompt = f"""
-        Analyze the following part of content and extract key points, main ideas, and important details:
-        
-        {chunk}
-        
-        Provide a concise summary of this part, highlighting the most important information.
-        """
-        try:
-            response = generate_content_with_retry(model, chunk_prompt)
-            all_content.append(response.text)
-        except Exception as e:
-            st.error(f"Error processing chunk {i+1}: {str(e)}")
-            return None
-    
-    final_prompt = base_prompt_template.format(
-        tone=tone,
-        keywords=', '.join(keywords),
-        word_count=word_count,
-        input_text='\n'.join(all_content)
-    )
-
+def get_transcript(youtube_video_url):
+    """Get transcript from YouTube video with verification dropdown"""
     try:
-        final_response = generate_content_with_retry(model, final_prompt)
-        return final_response.text
+        video_id = youtube_video_url.split("=")[1]
+        transcript_text = YouTubeTranscriptApi.get_transcript(video_id, languages=['en-IN', 'en', 'hi'])
+        transcript = " ".join([entry["text"] for entry in transcript_text])
+        
+        # Store transcript in session state for verification
+        st.session_state.current_transcript = transcript
+        
+        # Add expandable section to verify transcript
+        with st.expander("🔍 View Raw Transcript", expanded=False):
+            st.markdown("### Raw Transcript")
+            st.markdown("*Verify the transcript before generating the blog post:*")
+            
+            # Display transcript with scroll
+            st.markdown(
+                f"""
+                <div style="max-height: 300px; overflow-y: scroll; padding: 10px; 
+                border: 1px solid #ccc; border-radius: 5px; background-color: #f5f5f5;">
+                {transcript}
+                </div>
+                """, 
+                unsafe_allow_html=True
+            )
+            
+            # Add word count info
+            word_count = len(transcript.split())
+            st.info(f"📝 Word Count: {word_count} words")
+            
+            # Add transcript quality warning if needed
+            if word_count < 100:
+                st.warning("⚠️ The transcript seems quite short. This might affect the quality of the generated blog post.")
+        
+        return transcript
+        
     except Exception as e:
-        st.error(f"Error generating final blog post: {str(e)}")
+        st.error(f"Error retrieving transcript: {e}")
         return None
 
+class ResponseManager:
+    def __init__(self, model):
+        self.model = model
+        self.MAX_TOKENS = 8192  # Adjust based on the model's limit
+        self.BATCH_SIZE = 1000  # Adjust as needed
+
+    def count_tokens(self, text: str) -> int:
+        try:
+            encoding = tiktoken.encoding_for_model("gemini-1.5-flash")  # Use the correct model name
+            return len(encoding.encode(text))
+        except Exception:
+            return len(text.split()) * 1.3  # Fallback approximation
+
+    def generate_response(self, prompt, temperature, placeholder):
+        full_response = ""
+        continuation_prompt = "\nPlease continue from where you left off..."
+        current_prompt = prompt
+
+        try:
+            while True:
+                remaining_tokens = self.MAX_TOKENS - self.count_tokens(full_response)
+                tokens_to_generate = min(self.BATCH_SIZE, remaining_tokens)
+
+                response = self.model.generate_content(
+                    current_prompt,
+                    generation_config=genai.types.GenerationConfig(
+                        temperature=temperature,
+                        max_output_tokens=tokens_to_generate,
+                    ),
+                    stream=True
+                )
+
+                batch_response = ""
+                for chunk in response:
+                    if chunk.text:
+                        batch_response += chunk.text
+                        full_response += chunk.text
+                        placeholder.markdown(full_response + "▌")
+                        time.sleep(0.01)
+
+                if batch_response.strip().endswith((".", "!", "?", "\n")) or \
+                   len(batch_response.strip()) < tokens_to_generate * 0.9:
+                    break
+
+                current_prompt = full_response + continuation_prompt
+
+            return full_response
+
+        except Exception as e:
+            st.error(f"An error occurred: {str(e)}")
+            return f"Error generating response: {str(e)}"
+
+def generate_blog_post(input_text, tone, keywords, length):
+    """Generate a complete blog post using ResponseManager"""
+    word_count = LENGTH_OPTIONS[length]
+    model = genai.GenerativeModel("gemini-1.5-flash")
+    response_manager = ResponseManager(model)
+    
+    try:
+        # Show processing status
+        status_container = st.empty()
+        status_container.info("🔄 Starting blog post generation...")
+        
+        # Prepare the prompt
+        prompt = f"""
+        {base_prompt_template}
+        
+        Use the following input to create a single, cohesive blog post:
+        {input_text}
+        
+        Ensure the blog post:
+        - Has a consistent {tone} tone
+        - Incorporates these keywords: {', '.join(keywords)}
+        - Is approximately {word_count} words long
+        - Flows smoothly and reads as a single, coherent piece
+        """
+        
+        # Generate content with ResponseManager
+        status_container.info("🎯 Generating blog post...")
+        blog_post = response_manager.generate_response(prompt, temperature=0.7, placeholder=status_container)
+        
+        status_container.success("✨ Blog post generated successfully!")
+        
+        return blog_post
+        
+    except Exception as e:
+        st.error(f"❌ Error generating blog post: {str(e)}")
+        return None
 
 # Streamlit UI with progress tracking
 def main():
@@ -216,10 +291,12 @@ def main():
         st.session_state.blog_post = None
     if 'processing' not in st.session_state:
         st.session_state.processing = False
+    if 'cancel_generation' not in st.session_state:
+        st.session_state.cancel_generation = False
     
     st.title("✍️ BlogBrain Genius AI: Video to Blog Alchemist")
     
-    # Input method selection with proper state management
+    # Input method selection
     input_method = st.radio("Choose input method:", ("YouTube Video", "Custom Text"))
     
     input_text = ""
@@ -243,21 +320,30 @@ def main():
         keywords = st.text_input("Enter keywords (comma-separated):")
         length = st.selectbox("Select length:", list(LENGTH_OPTIONS.keys()))
     
+    # Generate button
     if st.button("Generate Blog Post") and input_text:
         st.session_state.processing = True
+        st.session_state.cancel_generation = False
         try:
             with st.spinner("Generating a single, comprehensive blog post..."):
+                # Add a cancel button
+                if st.button("Cancel Generation"):
+                    st.session_state.cancel_generation = True
+                
                 blog_post = generate_blog_post(
                     input_text,
                     tone,
                     keywords.split(",") if keywords else [],
                     length
                 )
-            if blog_post:
-                st.session_state.blog_post = blog_post
-                st.success("Blog post generated successfully!")
-            else:
-                st.error("Failed to generate the blog post. Please try again later.")
+                
+                if blog_post and not st.session_state.cancel_generation:
+                    st.session_state.blog_post = blog_post
+                    st.success("Blog post generated successfully!")
+                elif st.session_state.cancel_generation:
+                    st.warning("Blog post generation was cancelled.")
+                else:
+                    st.error("Failed to generate the blog post. Please try again later.")
         except Exception as e:
             st.error(f"An unexpected error occurred: {str(e)}")
         finally:
@@ -266,12 +352,19 @@ def main():
     # Display results
     if st.session_state.blog_post:
         st.markdown(st.session_state.blog_post)
-        st.download_button(
-            "Download Blog Post",
-            st.session_state.blog_post,
-            "blog_post.md",
-            "text/markdown"
-        )
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.download_button(
+                "Download Blog Post",
+                st.session_state.blog_post,
+                "blog_post.md",
+                "text/markdown"
+            ):
+                st.success("Blog post downloaded successfully!")
+        with col2:
+            if st.button("Reset"):
+                st.session_state.blog_post = None
+                st.experimental_rerun()
 
 if __name__ == "__main__":
     main()
